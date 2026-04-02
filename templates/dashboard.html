@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Weather Anomaly Detection Tool — Real-time weather analysis with historical comparison, anomaly detection, and interactive charts.">
+    <title>Weather Anomaly Detection Tool</title>
+
+    <!-- Google Fonts: Inter + Orbitron -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="light-mode">
+
+
+    <!-- ─── Animated Background Layer ─── -->
+    <div class="sky-bg"></div>
+    <div class="stars-container" id="stars-container"></div>
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+    <div class="particles-layer" id="particles-layer"></div>
+
+
+
+    <!-- ─── Navbar ─── -->
+    <nav class="navbar" id="navbar">
+        <a href="/" class="nav-brand">
+            <div class="nav-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    <circle cx="12" cy="12" r="4"/>
+                </svg>
+            </div>
+        </a>
+        <div class="nav-right">
+        </div>
+
+    </nav>
+
+
+    <div class="dashboard-layout">
+        <aside class="sidebar-panel">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+                    </svg>
+                </div>
+                <div class="sidebar-title-group">
+                    <span class="sidebar-title">Weather Watcher</span>
+                    <div class="live-indicator sidebar-live" id="live-indicator">
+                        <span class="live-dot"></span>
+                        <span class="live-text">Real-time Analytics</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <span class="section-label">Analysis Summary</span>
+                <div class="summary-card" id="sidebar-summary-card">
+                    <div class="summary-item">
+                        <span class="summary-icon">📍</span>
+                        <div>
+                            <span class="summary-label">Selected City</span>
+                            <span class="summary-value" id="sidebar-city">None</span>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon" id="sidebar-status-icon">📊</span>
+                        <div>
+                            <span class="summary-label">Status</span>
+                            <span class="status-badge" id="sidebar-status">Waiting...</span>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon">🌡️</span>
+                        <div>
+                            <span class="summary-label">Temp Difference</span>
+                            <span class="summary-value" id="sidebar-temp-diff">--</span>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon">⚠️</span>
+                        <div>
+                            <span class="summary-label">Confidence</span>
+                            <span class="summary-value" id="sidebar-confidence">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <span class="section-label">Settings</span>
+                <div class="toggle-group">
+                    <span class="summary-value" style="font-size: 0.85rem;">Dark Mode</span>
+                    <button class="theme-toggle-btn" id="theme-toggle-sidebar" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="sidebar-section" style="margin-top: auto; padding-bottom: 20px;">
+                <span class="section-label">Quick Actions</span>
+                <button class="quick-action-btn" onclick="checkWeather()">
+                    <span>🔄</span> Re-analyze
+                </button>
+                <button class="quick-action-btn" onclick="focusSearch()">
+                    <span>🔍</span> Change City
+                </button>
+                <button class="quick-action-btn" onclick="scrollToCharts()">
+                    <span>📊</span> View Full Analysis
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="app-container">
+
+        <!-- ─── Search Section ─── -->
+        <section class="search-section" id="search-section">
+            <div class="search-header" style="text-align: center;">
+                <h1 class="page-title" id="page-title">Weather Anomaly <span class="highlight">Detection Tool</span></h1>
+                <p class="page-subtitle">Analyze historical patterns vs real-time data for any global location</p>
+            </div>
+
+
+            <!-- Redesigned Search Bar -->
+            <div style="margin-bottom: 24px;">
+                <div class="search-pill">
+                    <span class="search-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                    </span>
+                    <input type="text" id="city-input" placeholder="Search any city worldwide..." autocomplete="off">
+                    <div class="suggestions-dropdown" id="suggestions-dropdown"></div>
+                    <button class="analyze-btn" id="check-btn" onclick="checkWeather()">
+                        <span>Analyze</span>
+                        <svg class="btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="quick-cities" id="quick-cities">
+                    <span class="quick-label">Popular:</span>
+                    <button class="city-chip" onclick="quickCity('Delhi')"><span class="chip-emoji">🏛️</span> Delhi</button>
+                    <button class="city-chip" onclick="quickCity('Mumbai')"><span class="chip-emoji">🌊</span> Mumbai</button>
+                    <button class="city-chip" onclick="quickCity('London')"><span class="chip-emoji">🎡</span> London</button>
+                    <button class="city-chip" onclick="quickCity('New York')"><span class="chip-emoji">🗽</span> New York</button>
+                    <button class="city-chip" onclick="quickCity('Tokyo')"><span class="chip-emoji">🗼</span> Tokyo</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ─── Loading ─── -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner-container">
+                <div class="weather-spinner">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <svg class="spinner-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </div>
+                <p class="loading-text">Analyzing weather patterns<span class="loading-dots"></span></p>
+            </div>
+        </div>
+
+        <!-- ─── Error ─── -->
+        <div class="error-container" id="error-container">
+            <div class="error-card glass-card">
+                <div class="error-icon-wrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+                <h3 class="error-title">Something went wrong</h3>
+                <p class="error-text" id="error-text"></p>
+                <button class="retry-btn" onclick="retrySearch()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Try Again
+                </button>
+            </div>
+        </div>
+
+        <!-- ─── Alert Banner ─── -->
+        <div class="alert-banner" id="alert-banner">
+            <div class="alert-inner">
+                <div class="alert-icon-wrap" id="alert-icon-wrap">
+                    <span class="alert-icon" id="alert-icon">🚨</span>
+                </div>
+                <div class="alert-body">
+                    <h4 class="alert-title" id="alert-title">Anomaly Detected</h4>
+                    <p class="alert-text" id="alert-text"></p>
+                </div>
+                <div class="alert-meta">
+                    <span class="confidence-badge" id="confidence-badge">--</span>
+                    <span class="alert-time" id="alert-time"></span>
+                </div>
+            </div>
+            <button class="alert-close" onclick="closeAlert()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <!-- ─── Results ─── -->
+        <section class="results-section" id="results-section">
+            <div class="city-header glass-card" id="city-header">
+                <div class="city-info">
+                    <img id="weather-icon" src="" alt="Weather icon" class="weather-icon-lg">
+                    <div>
+                        <h2 class="city-name" id="city-name"></h2>
+                        <p class="weather-desc" id="weather-desc"></p>
+                        <span class="data-note" id="data-note"></span>
+                    </div>
+                </div>
+                <div class="city-header-right">
+                    <div class="anomaly-badge" id="anomaly-badge"><span id="anomaly-badge-text"></span></div>
+                    <div class="temp-hero">
+                        <span class="temp-hero-val" id="temp-hero-val">--</span>
+                        <span class="temp-hero-unit">°C</span>
+                        <span class="trend-arrow" id="temp-trend-arrow"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card glass-card" id="card-current-temp">
+                    <div class="stat-header"><span class="stat-icon">🌡️</span><span class="stat-label">Current Temp</span></div>
+                    <div class="stat-value-row"><span class="stat-value" id="current-temp">--</span><span class="stat-unit">°C</span></div>
+                    <div class="stat-trend" id="temp-trend-label"></div>
+                </div>
+                <div class="stat-card glass-card" id="card-avg-temp">
+                    <div class="stat-header"><span class="stat-icon">📊</span><span class="stat-label">Avg Temp</span></div>
+                    <div class="stat-value-row"><span class="stat-value" id="avg-temp">--</span><span class="stat-unit">°C</span></div>
+                    <div class="stat-meta">Monthly historical average</div>
+                </div>
+                <div class="stat-card glass-card" id="card-temp-diff">
+                    <div class="stat-header"><span class="stat-icon">📐</span><span class="stat-label">Temp Diff</span></div>
+                    <div class="stat-value-row"><span class="stat-value" id="temp-diff">--</span><span class="stat-unit">°C</span></div>
+                    <div class="stat-confidence" id="temp-confidence"></div>
+                </div>
+                <div class="stat-card glass-card" id="card-rainfall">
+                    <div class="stat-header"><span class="stat-icon">🌧️</span><span class="stat-label">Current Rain</span></div>
+                    <div class="stat-value-row"><span class="stat-value" id="current-rainfall">--</span><span class="stat-unit">mm</span></div>
+                    <div class="stat-trend" id="rain-trend-label"></div>
+                </div>
+                <div class="stat-card glass-card" id="card-avg-rain">
+                    <div class="stat-header"><span class="stat-icon">💧</span><span class="stat-label">Avg Rain</span></div>
+                    <div class="stat-value-row"><span class="stat-value" id="avg-rainfall">--</span><span class="stat-unit">mm</span></div>
+                    <div class="stat-meta">Monthly historical average</div>
+                </div>
+                <div class="stat-card glass-card" id="card-extra">
+                    <div class="stat-header"><span class="stat-icon">💨</span><span class="stat-label">Conditions</span></div>
+                    <div class="extra-details">
+                        <div class="detail-row"><span>Feels Like</span><span id="feels-like">--°C</span></div>
+                        <div class="detail-row"><span>Humidity</span><span id="humidity">--%</span></div>
+                        <div class="detail-row"><span>Wind</span><span id="wind-speed">-- m/s</span></div>
+                        <div class="detail-row"><span>Pressure</span><span id="pressure">-- hPa</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="anomaly-details-card glass-card" id="anomaly-details-card">
+                <h3 class="section-title"><span class="section-icon">🔍</span>Anomaly Analysis<span class="confidence-tag" id="overall-confidence-tag"></span></h3>
+                <div class="anomaly-grid" id="anomaly-grid"></div>
+            </div>
+
+            <div class="dataset-summary glass-card" id="dataset-summary">
+                <h3 class="section-title"><span class="section-icon">📈</span>Historical Dataset Anomalies</h3>
+                <div class="summary-stats">
+                    <div class="summary-item"><span class="summary-number" id="total-anomalies">0</span><span class="summary-label">Total Anomalies</span></div>
+                    <div class="summary-item"><span class="summary-number temp-color" id="temp-anomalies">0</span><span class="summary-label">Temperature</span></div>
+                    <div class="summary-item"><span class="summary-number rain-color" id="rain-anomalies">0</span><span class="summary-label">Rainfall</span></div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-card glass-card">
+                    <h3 class="section-title"><span class="section-icon">🌡️</span>Temperature: Historical vs Current</h3>
+                    <div class="chart-wrapper"><canvas id="tempChart"></canvas></div>
+                </div>
+                <div class="chart-card glass-card">
+                    <h3 class="section-title"><span class="section-icon">🌧️</span>Rainfall Monthly Pattern</h3>
+                    <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
+                </div>
+            </div>
+            <div class="charts-section">
+                <div class="chart-card glass-card">
+                    <h3 class="section-title"><span class="section-icon">📊</span>Temperature Range (Min–Max)</h3>
+                    <div class="chart-wrapper"><canvas id="areaChart"></canvas></div>
+                </div>
+                <div class="chart-card glass-card">
+                    <h3 class="section-title"><span class="section-icon">📉</span>Monthly Comparison</h3>
+                    <div class="chart-wrapper"><canvas id="comparisonChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="another-city">
+                <button class="another-btn" onclick="resetSearch()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Check Another City
+                </button>
+            </div>
+        </section>
+
+        <footer class="app-footer">
+            <p>Weather Anomaly Detection Tool &copy; 2026 &mdash; Powered by OpenWeather API</p>
+        </footer>
+        </main>
+    </div>
+
+    <!-- Script -->
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Weather Anomaly Detection Tool — Detect unusual weather patterns instantly with real-time anomaly detection and historical analysis.">
+    <title>Weather Anomaly Detection Tool</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* ─── Main Content ─── */
+        .landing-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 720px;
+            padding: 24px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        /* ─── Weather Animation ─── */
+        .weather-anim {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 32px;
+            position: relative;
+        }
+        .sun-core {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b, #f97316);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.5), 0 0 80px rgba(251, 191, 36, 0.2);
+            animation: sunPulse 3s ease-in-out infinite;
+        }
+        .sun-rays {
+            position: absolute; inset: 0;
+            animation: sunRotate 20s linear infinite;
+        }
+        .sun-rays::before, .sun-rays::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 2px solid transparent;
+        }
+        .sun-rays::before { width: 90px; height: 90px; border-top-color: rgba(251, 191, 36, 0.3); border-right-color: rgba(251, 191, 36, 0.1); }
+        .sun-rays::after { width: 110px; height: 110px; border-bottom-color: rgba(251, 191, 36, 0.2); border-left-color: rgba(251, 191, 36, 0.1); animation: sunRotate 15s linear infinite reverse; }
+        
+        .cloud { position: absolute; background: rgba(255,255,255,0.12); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); border-radius: 30px; }
+        .cloud-1 { width: 80px; height: 32px; bottom: 18px; right: 8px; animation: cloudFloat 6s ease-in-out infinite; }
+        .cloud-2 { width: 55px; height: 24px; bottom: 36px; right: 30px; animation: cloudFloat 6s ease-in-out infinite 0.5s; }
+        .rain-drop { position: absolute; width: 2px; background: linear-gradient(to bottom, rgba(6,182,212,0.6), transparent); border-radius: 2px; animation: rainFall 1.5s linear infinite; }
+
+        @keyframes sunPulse { 0%,100%{box-shadow:0 0 40px rgba(251,191,36,0.5)} 50%{box-shadow:0 0 60px rgba(251,191,36,0.7)} }
+        @keyframes sunRotate { to { transform: translate(-50%,-50%) rotate(360deg); } }
+        @keyframes cloudFloat { 0%,100%{transform:translateX(0)} 50%{transform:translateX(8px)} }
+        @keyframes rainFall { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
+
+        /* ─── Glass Card ─── */
+        .hero-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--blur-card));
+            -webkit-backdrop-filter: blur(var(--blur-card));
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-xl);
+            padding: 64px 48px 48px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            box-shadow: var(--glow-card);
+        }
+        .hero-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-card-hover);
+            box-shadow: var(--shadow-card-hover);
+            transform: translateY(-4px);
+        }
+
+        /* ─── Typography ─── */
+        .brand-tag {
+            display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
+            background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.15);
+            border-radius: 100px; font-size: 0.8rem; font-weight: 700; color: var(--accent-blue);
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 32px;
+            animation: fadeInDown 0.8s ease-out both;
+        }
+        .brand-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-blue); animation: pulse 2s ease-in-out infinite; }
+
+        .hero-title {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(2.4rem, 8vw, 3.8rem);
+            font-weight: 900; line-height: 1.1; letter-spacing: -0.05em;
+            color: var(--text-primary); margin-bottom: 16px;
+            animation: fadeInDown 0.8s ease-out both;
+        }
+        .hero-title span.highlight {
+            background: var(--gradient-title); background-size: 300% 100%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; animation: titleGradientShift 8s linear infinite;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem; color: var(--text-secondary); font-weight: 500;
+            line-height: 1.6; max-width: 540px; margin: 0 auto 48px;
+            animation: fadeInDown 0.8s ease-out 0.2s both;
+        }
+
+        /* ─── CTA Button ─── */
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 12px;
+            padding: 18px 48px; background: var(--gradient-primary);
+            border: none; border-radius: var(--radius-full);
+            color: white; font-family: 'Inter', sans-serif;
+            font-size: 1.1rem; font-weight: 700; cursor: pointer;
+            text-decoration: none; transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+        }
+        .cta-btn:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(14, 165, 233, 0.4); filter: brightness(1.1); }
+
+        /* ─── CTA Button ─── */
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 12px;
+            padding: 18px 52px; background: var(--gradient-primary);
+            border: none; border-radius: var(--radius-full);
+            color: white; font-family: 'Inter', sans-serif;
+            font-size: 1.15rem; font-weight: 700; cursor: pointer;
+            text-decoration: none; transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+        }
+        .cta-btn:hover { 
+            transform: translateY(-4px) scale(1.02); 
+            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.45); 
+            filter: brightness(1.1); 
+        }
+        .cta-btn svg { transition: transform 0.3s ease; }
+        .cta-btn:hover svg { transform: translateX(5px); }
+
+        /* ─── Animations ─── */
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes fadeInDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes titleGradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        @media(max-width:640px) {
+            .hero-card { padding: 40px 28px 36px; border-radius: 22px; }
+            .weather-anim { width: 110px; height: 110px; margin-bottom: 24px; }
+            .sun-core { width: 46px; height: 46px; }
+            .hero-title { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <!-- ─── Animated Background Layer ─── -->
+    <div class="sky-bg"></div>
+    <div class="stars-container" id="stars-container"></div>
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+    <div class="particles-layer" id="particles-layer"></div>
+
+    <!-- ─── Theme Toggle ─── -->
+    <div style="position: fixed; top: 24px; right: 24px; z-index: 1000;">
+        <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </div>
+
+
+    <!-- ─── Main Content ─── -->
+    <div class="landing-container">
+        <div class="hero-card">
+            <!-- Weather Animation -->
+            <div class="weather-anim">
+                <div class="sun-rays"></div>
+                <div class="sun-core"></div>
+                <div class="cloud cloud-1"></div>
+                <div class="cloud cloud-2"></div>
+                <div class="rain-drop" style="bottom:2px;right:20px;height:12px;animation-delay:0s"></div>
+                <div class="rain-drop" style="bottom:2px;right:35px;height:10px;animation-delay:0.3s"></div>
+                <div class="rain-drop" style="bottom:2px;right:50px;height:14px;animation-delay:0.6s"></div>
+                <div class="rain-drop" style="bottom:2px;right:65px;height:11px;animation-delay:0.9s"></div>
+            </div>
+
+            <!-- Tag -->
+            <div class="brand-tag">
+                <span class="dot"></span>
+                Weather Intelligence Platform
+            </div>
+
+            <!-- Title -->
+            <h1 class="hero-title">Weather Anomaly <br><span class="highlight">Detection Tool</span></h1>
+            <p class="hero-subtitle">Detect unusual weather patterns using real-time and historical data</p>
+
+            <!-- CTA Section -->
+            <div style="margin-bottom: 48px; animation: fadeInUp 0.8s ease-out 0.4s both;">
+                <a href="/dashboard" class="cta-btn">
+                    <span>Get Started</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+            </div>
+
+
+
+            <!-- Suggestion Tokens (Popular Cities) -->
+            <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; animation: fadeInUp 0.8s ease-out 0.6s both;">
+                <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Popular:</span>
+                <a href="javascript:void(0)" onclick="quickSearch('Delhi')" class="popular-city-tag">Delhi</a>
+                <a href="javascript:void(0)" onclick="quickSearch('Mumbai')" class="popular-city-tag">Mumbai</a>
+                <a href="javascript:void(0)" onclick="quickSearch('London')" class="popular-city-tag">London</a>
+                <a href="javascript:void(0)" onclick="quickSearch('New York')" class="popular-city-tag">New York</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/script.js"></script>
+    <script>
+        // Local search handler
+        function handleSearch() {
+            const city = document.getElementById('city-input').value.trim();
+            if (city) {
+                window.location.href = `/dashboard?city=${encodeURIComponent(city)}`;
+            } else {
+                document.getElementById('city-input').focus();
+            }
+        }
+
+        // Enter key support
+        document.getElementById('city-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+
+        function quickSearch(city) {
+            window.location.href = `/dashboard?city=${encodeURIComponent(city)}`;
+        }
+    </script>
+
+</body>
+</html>
