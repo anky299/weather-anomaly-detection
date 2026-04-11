@@ -15,7 +15,9 @@ from datetime import datetime
 app = Flask(__name__)
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
-API_KEY = "503f595cd1f7e5dcce7f5258e02c2e38"
+# API Key is sourced from the environment for security on deployment
+# Local fallback is provided but should be replaced by .env or system variables
+API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 GEOCODE_URL = "http://api.openweathermap.org/geo/1.0/direct"
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data", "weather.csv")
@@ -23,6 +25,11 @@ CSV_PATH = os.path.join(os.path.dirname(__file__), "data", "weather.csv")
 # Anomaly detection thresholds
 TEMP_THRESHOLD = 5       # ±5°C
 RAINFALL_THRESHOLD = 20  # ±20 mm
+
+# Map anomaly logic
+MAP_DAILY_NORMAL_TEMP = 20  # Placeholder average temp
+MAP_DEVIATION_THRESHOLD = 10  # Flag if diff > 10
+MAJOR_CITIES = ["Delhi", "Mumbai", "London", "New York", "Tokyo", "Sydney", "Paris", "Berlin", "Dubai", "Singapore"]
 
 
 # ─── Data Processing ────────────────────────────────────────────────────────────
@@ -143,21 +150,28 @@ def get_historical_chart_data(df, city=None):
 
 # ─── API Integration ────────────────────────────────────────────────────────────
 
-def fetch_api_data(city):
-    """Fetch real-time weather data from OpenWeather API."""
+def fetch_api_data(city=None, lat=None, lon=None):
+    """Fetch real-time weather data from OpenWeather API by city or coordinates."""
     try:
         params = {
-            "q": city,
             "appid": API_KEY,
             "units": "metric"
         }
+        
+        if lat is not None and lon is not None:
+            params["lat"] = lat
+            params["lon"] = lon
+        elif city:
+            params["q"] = city
+        else:
+            return {"error": "No city name or coordinates provided."}
 
         response = requests.get(BASE_URL, params=params, timeout=10)
 
         if response.status_code == 401:
             return {"error": "Invalid API key. Please check your OpenWeather API key."}
         elif response.status_code == 404:
-            return {"error": f"City '{city}' not found. Please check the city name."}
+            return {"error": f"Weather data not found for the requested location."}
         elif response.status_code != 200:
             return {"error": f"API error (status {response.status_code}). Please try again later."}
 
@@ -190,7 +204,10 @@ def fetch_api_data(city):
             "feels_like": round(float(feels_like), 1) if isinstance(feels_like, (int, float)) else feels_like,
             "pressure": int(pressure) if isinstance(pressure, (int, float)) else pressure,
             "visibility": round(float(visibility) / 1000, 1) if isinstance(visibility, (int, float)) else visibility,
-            "clouds": int(clouds)
+            "clouds": int(clouds),
+            "lat": data.get("coord", {}).get("lat", 0),
+            "lon": data.get("coord", {}).get("lon", 0),
+            "city": data.get("name", city.title() if city else "Unknown Location")
         }
 
     except requests.exceptions.Timeout:
@@ -289,7 +306,7 @@ def landing():
 @app.route("/dashboard")
 def dashboard():
     """Serve the dashboard."""
-    return render_template("dashboard.html")
+    return render_template("dashboard.html", api_key=API_KEY)
 
 
 @app.route("/api/geocode", methods=["GET"])
@@ -336,22 +353,31 @@ def geocode():
 @app.route("/api/check-weather", methods=["POST"])
 def check_weather():
     """Main API: fetch real-time data, compare with history, return analysis."""
-    data = request.get_json()
-    city = data.get("city", "").strip()
+    json_data = request.get_json()
+    city_input = json_data.get("city", "").strip()
+    lat = json_data.get("lat")
+    lon = json_data.get("lon")
 
-    if not city:
-        return jsonify({"error": "Please enter a city name."}), 400
+    if not city_input and (lat is None or lon is None):
+        return jsonify({"error": "Please provide a city name or coordinates."}), 400
 
-    # Step 1: Load CSV
+    # Step 1: Fetch real-time weather first
+    api_data = fetch_api_data(city=city_input, lat=lat, lon=lon)
+    if "error" in api_data:
+        return jsonify(api_data), 400
+
+    resolved_city = api_data.get("city", city_input)
+
+    # Step 2: Load CSV
     df = load_and_process_data()
     if df is None:
         return jsonify({"error": "Failed to load historical data."}), 500
 
-    # Step 2: Current month
+    # Step 3: Current month
     current_month = datetime.now().month
 
-    # Step 3: Monthly averages (city-specific or overall)
-    monthly_avg = get_monthly_averages(df, city)
+    # Step 4: Monthly averages (resolved city-specific or overall)
+    monthly_avg = get_monthly_averages(df, resolved_city)
     has_city_data = monthly_avg is not None
     if not has_city_data:
         monthly_avg = get_monthly_averages(df)
@@ -363,28 +389,23 @@ def check_weather():
     avg_temp = float(round(current_month_avg['avg_temp'].values[0], 1))
     avg_rainfall = float(round(current_month_avg['avg_rainfall'].values[0], 1))
 
-    # Step 4: Fetch real-time weather
-    api_data = fetch_api_data(city)
-    if "error" in api_data:
-        return jsonify(api_data), 400
-
     # Step 5: Detect anomalies
     anomaly = detect_anomaly(
         api_data["current_temp"], avg_temp,
         api_data["current_rainfall"], avg_rainfall
     )
 
-    # Step 6: Dataset anomalies
-    dataset_anomalies = get_dataset_anomalies(df, city if has_city_data else None)
+    # Step 6: Dataset anomalies (using resolved city name for consistency)
+    dataset_anomalies = get_dataset_anomalies(df, resolved_city if has_city_data else None)
 
     # Step 7: Chart data
-    chart_data = get_historical_chart_data(df, city if has_city_data else None)
+    chart_data = get_historical_chart_data(df, resolved_city if has_city_data else None)
     if chart_data is None:
         chart_data = get_historical_chart_data(df)
 
     # Step 8: Build response
     response = {
-        "city": city.title(),
+        "city": resolved_city.title(),
         "has_city_data": has_city_data,
         "current_temp": float(api_data["current_temp"]),
         "avg_temp": float(avg_temp),
@@ -417,6 +438,8 @@ def check_weather():
             "temperature": int(TEMP_THRESHOLD),
             "rainfall": int(RAINFALL_THRESHOLD)
         },
+        "lat": api_data.get("lat"),
+        "lon": api_data.get("lon"),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
@@ -432,6 +455,34 @@ def available_cities():
 
     cities = sorted(df['Location'].str.strip().unique().tolist())
     return jsonify({"cities": cities})
+
+
+@app.route("/api/map-data", methods=["GET"])
+def map_data():
+    """Fetch real-time weather data for a set of major cities to populate the Leaflet map."""
+    cities_data = []
+
+    for city in MAJOR_CITIES:
+        api_data = fetch_api_data(city)
+        if "error" in api_data:
+            continue
+
+        current_temp = api_data["current_temp"]
+        # Calculate simple deviation
+        deviation = round(current_temp - MAP_DAILY_NORMAL_TEMP, 1)
+        is_anomaly = abs(deviation) > MAP_DEVIATION_THRESHOLD
+
+        cities_data.append({
+            "city": city,
+            "lat": api_data["lat"],
+            "lon": api_data["lon"],
+            "current_temp": current_temp,
+            "deviation": deviation,
+            "is_anomaly": is_anomaly,
+            "status": "High Deviation Anomaly" if is_anomaly else "Normal"
+        })
+
+    return jsonify({"data": cities_data})
 
 
 # ─── Run ────────────────────────────────────────────────────────────────────────

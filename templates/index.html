@@ -12,257 +12,615 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Three.js (lightweight, CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     
     <style>
+        /* ══════════════════════════════════════════════════════════════════════
+           LANDING PAGE — FULL-SCREEN 3D EARTH + GLASSMORPHISM HERO
+           ══════════════════════════════════════════════════════════════════════ */
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
 
+        :root {
+            --primary-blue: #2d8cf0;
+            --primary-blue-light: #6db3f8;
+            --text-dark: #1a1a2e;
+            --text-gray: #4a4a6a;
+            --white: #ffffff;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-            background: var(--bg-body);
-            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            /* Always-visible mix of cyan + light orange + white, shifting gently */
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(0, 198, 255, 0.35), transparent 55%),
+                radial-gradient(ellipse at 80% 70%, rgba(252, 176, 69, 0.30), transparent 55%),
+                radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.60), transparent 65%),
+                radial-gradient(ellipse at 75% 20%, rgba(0, 210, 255, 0.20), transparent 50%),
+                radial-gradient(ellipse at 30% 80%, rgba(255, 180, 80, 0.22), transparent 50%),
+                linear-gradient(135deg, #e6f9ff 0%, #ffffff 35%, #fff8ee 65%, #e0f7ff 100%);
+            background-size: 100% 100%;
         }
 
-        /* ─── Main Content ─── */
-        .landing-container {
+        /* No filter on body — the floating blobs provide all the dynamic color movement */
+
+        /* Floating color blobs that drift across the background for dynamic feel */
+        .bg-blob {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+            will-change: transform;
+        }
+        .bg-blob-cyan {
+            width: 600px; height: 600px;
+            background: rgba(0, 198, 255, 0.25);
+            top: -10%; left: -5%;
+            animation: blobMove1 22s ease-in-out infinite alternate;
+        }
+        .bg-blob-orange {
+            width: 550px; height: 550px;
+            background: rgba(252, 176, 69, 0.22);
+            bottom: -10%; right: -5%;
+            animation: blobMove2 26s ease-in-out infinite alternate;
+        }
+        .bg-blob-white {
+            width: 500px; height: 500px;
+            background: rgba(255, 255, 255, 0.5);
+            top: 30%; left: 35%;
+            animation: blobMove3 18s ease-in-out infinite alternate;
+        }
+
+        @keyframes blobMove1 {
+            0%   { transform: translate(0, 0) scale(1); }
+            50%  { transform: translate(35vw, 25vh) scale(1.15); }
+            100% { transform: translate(60vw, 10vh) scale(0.95); }
+        }
+        @keyframes blobMove2 {
+            0%   { transform: translate(0, 0) scale(1); }
+            50%  { transform: translate(-40vw, -30vh) scale(1.1); }
+            100% { transform: translate(-20vw, -50vh) scale(0.9); }
+        }
+        @keyframes blobMove3 {
+            0%   { transform: translate(0, 0) scale(1); }
+            50%  { transform: translate(15vw, -20vh) scale(1.2); }
+            100% { transform: translate(-10vw, 15vh) scale(0.85); }
+        }
+
+        /* ── FLOATING FEATURE CARDS (Side Panels) ── */
+        .floating-cards-container {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .feature-card {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 18px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+            pointer-events: auto;
+            opacity: 0;
+            animation: cardFadeInSide 1s ease forwards;
+            cursor: default;
+            min-width: 200px;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px) !important;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Icon box */
+        .fc-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+        .fc-icon.blue {
+            background: linear-gradient(135deg, #4facfe, #00c6ff);
+            box-shadow: 0 6px 14px rgba(0, 198, 255, 0.3);
+        }
+        .fc-icon.orange {
+            background: linear-gradient(135deg, #f97316, #fcb045);
+            box-shadow: 0 6px 14px rgba(252, 176, 69, 0.3);
+        }
+        .fc-icon.green {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            box-shadow: 0 6px 14px rgba(16, 185, 129, 0.3);
+        }
+        .fc-icon.purple {
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            box-shadow: 0 6px 14px rgba(139, 92, 246, 0.3);
+        }
+
+        .fc-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .fc-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .fc-value {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            letter-spacing: -0.01em;
+        }
+
+        /* Each card gets its own unique float path */
+        .fc-left-1  { top: 18%; left: 4%;  animation-delay: 0.4s; }
+        .fc-left-2  { bottom: 20%; left: 5%; animation-delay: 0.8s; }
+        .fc-right-1 { top: 22%; right: 4%;  animation-delay: 0.6s; }
+        .fc-right-2 { bottom: 16%; right: 5%; animation-delay: 1.0s; }
+
+        /* Fade in first, then start floating */
+        @keyframes cardFadeInSide {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* After fade-in, JS adds .floating class which triggers continuous movement */
+        .feature-card.floating { animation: none; opacity: 1; }
+        .fc-left-1.floating  { animation: floatPath1 8s ease-in-out infinite; opacity: 1; }
+        .fc-left-2.floating  { animation: floatPath2 9s ease-in-out infinite; opacity: 1; }
+        .fc-right-1.floating { animation: floatPath3 7s ease-in-out infinite; opacity: 1; }
+        .fc-right-2.floating { animation: floatPath4 10s ease-in-out infinite; opacity: 1; }
+
+        @keyframes floatPath1 {
+            0%, 100% { transform: translate(0, 0); }
+            25%  { transform: translate(15px, -25px); }
+            50%  { transform: translate(-8px, -15px); }
+            75%  { transform: translate(12px, 8px); }
+        }
+        @keyframes floatPath2 {
+            0%, 100% { transform: translate(0, 0); }
+            25%  { transform: translate(-12px, -20px); }
+            50%  { transform: translate(20px, -28px); }
+            75%  { transform: translate(-6px, 12px); }
+        }
+        @keyframes floatPath3 {
+            0%, 100% { transform: translate(0, 0); }
+            25%  { transform: translate(-20px, -15px); }
+            50%  { transform: translate(10px, -32px); }
+            75%  { transform: translate(-15px, 6px); }
+        }
+        @keyframes floatPath4 {
+            0%, 100% { transform: translate(0, 0); }
+            25%  { transform: translate(14px, -28px); }
+            50%  { transform: translate(-15px, -12px); }
+            75%  { transform: translate(8px, 16px); }
+        }
+
+        /* Hide on narrow screens — no room for side cards */
+        @media (max-width: 1100px) {
+            .floating-cards-container { display: none; }
+        }
+
+        /* ── 3D Earth Background — FULL SCREEN, CRISP, NO BLUR ── */
+        #earth-canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            overflow: hidden;
+            /* NO blur filter — globe stays crisp */
+        }
+        #earth-canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            /* Blends with the light background while staying clearly visible */
+            opacity: 0.7 !important;
+        }
+
+        /* ── Subtle ambient stars layer ── */
+        .stars-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .star-dot {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: starTwinkle 3s ease-in-out infinite alternate;
+        }
+        @keyframes starTwinkle {
+            0% { opacity: 0.2; }
+            100% { opacity: 0.8; }
+        }
+
+        /* ── GLASSMORPHISM HERO CARD ── */
+        .hero-card {
             position: relative;
             z-index: 10;
             text-align: center;
-            max-width: 720px;
-            padding: 24px;
-            animation: fadeIn 1s ease-out;
+            width: 90%;
+            max-width: 480px;
+            padding: 40px 32px 36px;
+            /* Semi-transparent white background for light bg */
+            background: rgba(255, 255, 255, 0.55);
+            /* ONLY blur the globe behind this card */
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            /* Subtle white border */
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 28px;
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.08),
+                0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+                0 1px 0 rgba(255, 255, 255, 0.6) inset;
+
+            /* Entry Animation */
+            animation: cardFadeIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
         }
 
-        /* ─── Weather Animation ─── */
-        .weather-anim {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 32px;
-            position: relative;
+        @keyframes cardFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .sun-core {
-            width: 60px; height: 60px;
-            background: linear-gradient(135deg, #fbbf24, #f59e0b, #f97316);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 40px rgba(251, 191, 36, 0.5), 0 0 80px rgba(251, 191, 36, 0.2);
-            animation: sunPulse 3s ease-in-out infinite;
-        }
-        .sun-rays {
-            position: absolute; inset: 0;
-            animation: sunRotate 20s linear infinite;
-        }
-        .sun-rays::before, .sun-rays::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            border: 2px solid transparent;
-        }
-        .sun-rays::before { width: 90px; height: 90px; border-top-color: rgba(251, 191, 36, 0.3); border-right-color: rgba(251, 191, 36, 0.1); }
-        .sun-rays::after { width: 110px; height: 110px; border-bottom-color: rgba(251, 191, 36, 0.2); border-left-color: rgba(251, 191, 36, 0.1); animation: sunRotate 15s linear infinite reverse; }
-        
-        .cloud { position: absolute; background: rgba(255,255,255,0.12); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); border-radius: 30px; }
-        .cloud-1 { width: 80px; height: 32px; bottom: 18px; right: 8px; animation: cloudFloat 6s ease-in-out infinite; }
-        .cloud-2 { width: 55px; height: 24px; bottom: 36px; right: 30px; animation: cloudFloat 6s ease-in-out infinite 0.5s; }
-        .rain-drop { position: absolute; width: 2px; background: linear-gradient(to bottom, rgba(6,182,212,0.6), transparent); border-radius: 2px; animation: rainFall 1.5s linear infinite; }
 
-        @keyframes sunPulse { 0%,100%{box-shadow:0 0 40px rgba(251,191,36,0.5)} 50%{box-shadow:0 0 60px rgba(251,191,36,0.7)} }
-        @keyframes sunRotate { to { transform: translate(-50%,-50%) rotate(360deg); } }
-        @keyframes cloudFloat { 0%,100%{transform:translateX(0)} 50%{transform:translateX(8px)} }
-        @keyframes rainFall { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
+        /* ── TOP LABEL ── */
+        .top-label {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--primary-blue);
+            margin-bottom: 18px;
+            animation: fadeUp 0.8s ease 0.3s both;
+        }
 
-        /* ─── Glass Card ─── */
-        .hero-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(var(--blur-card));
-            -webkit-backdrop-filter: blur(var(--blur-card));
-            border: 1px solid var(--border-card);
-            border-radius: var(--radius-xl);
-            padding: 64px 48px 48px;
+        /* ── MAIN TITLE ── */
+        .hero-title {
+            font-size: clamp(1.7rem, 6vw, 2.4rem);
+            font-weight: 900;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            color: var(--text-dark);
+            margin-bottom: 14px;
+            animation: fadeUp 0.8s ease 0.45s both;
+        }
+        .hero-title .highlight {
+            color: var(--primary-blue-light);
+        }
+
+        /* ── SUBTITLE ── */
+        .hero-subtitle {
+            font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+            color: var(--text-gray);
+            font-weight: 400;
+            line-height: 1.6;
+            max-width: 400px;
+            margin: 0 auto 28px;
+            animation: fadeUp 0.8s ease 0.6s both;
+        }
+
+        /* ── CTA BUTTON ── */
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 40px;
+            background: var(--primary-blue);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition);
+            box-shadow: 0 8px 24px rgba(45, 140, 240, 0.35);
             position: relative;
             overflow: hidden;
-            transition: all 0.4s ease;
-            box-shadow: var(--glow-card);
+            animation: fadeUp 0.8s ease 0.75s both;
         }
-        .hero-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-card-hover);
-            box-shadow: var(--shadow-card-hover);
-            transform: translateY(-4px);
+        .cta-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
+        }
+        .cta-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 12px 32px rgba(45, 140, 240, 0.5), 0 0 15px rgba(45, 140, 240, 0.3);
+            background: #3a96f5;
+        }
+        .cta-btn:hover::before {
+            transform: translateX(100%);
+        }
+        .cta-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+        .cta-arrow {
+            transition: transform var(--transition);
+            font-size: 1.1rem;
+        }
+        .cta-btn:hover .cta-arrow {
+            transform: translateX(4px);
         }
 
-        /* ─── Typography ─── */
-        .brand-tag {
-            display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
-            background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.15);
-            border-radius: 100px; font-size: 0.8rem; font-weight: 700; color: var(--accent-blue);
-            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 32px;
-            animation: fadeInDown 0.8s ease-out both;
+        /* ── POPULAR CITIES ── */
+        .popular-section {
+            margin-top: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            animation: fadeUp 0.8s ease 0.9s both;
         }
-        .brand-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-blue); animation: pulse 2s ease-in-out infinite; }
-
-        .hero-title {
+        .popular-label {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            font-weight: 600;
+        }
+        .city-pill {
+            padding: 6px 16px;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(200, 210, 220, 0.6);
+            color: var(--text-dark);
             font-family: 'Inter', sans-serif;
-            font-size: clamp(2.4rem, 8vw, 3.8rem);
-            font-weight: 900; line-height: 1.1; letter-spacing: -0.05em;
-            color: var(--text-primary); margin-bottom: 16px;
-            animation: fadeInDown 0.8s ease-out both;
+            font-size: 0.82rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition);
         }
-        .hero-title span.highlight {
-            background: var(--gradient-title); background-size: 300% 100%;
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text; animation: titleGradientShift 8s linear infinite;
-        }
-
-        .hero-subtitle {
-            font-size: 1.25rem; color: var(--text-secondary); font-weight: 500;
-            line-height: 1.6; max-width: 540px; margin: 0 auto 48px;
-            animation: fadeInDown 0.8s ease-out 0.2s both;
+        .city-pill:hover {
+            background: rgba(45, 140, 240, 0.25);
+            border-color: rgba(45, 140, 240, 0.5);
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(45, 140, 240, 0.2);
         }
 
-        /* ─── CTA Button ─── */
-        .cta-btn {
-            display: inline-flex; align-items: center; gap: 12px;
-            padding: 18px 48px; background: var(--gradient-primary);
-            border: none; border-radius: var(--radius-full);
-            color: white; font-family: 'Inter', sans-serif;
-            font-size: 1.1rem; font-weight: 700; cursor: pointer;
-            text-decoration: none; transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+        /* ── ANIMATION KEYFRAMES ── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .cta-btn:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(14, 165, 233, 0.4); filter: brightness(1.1); }
 
-        /* ─── CTA Button ─── */
-        .cta-btn {
-            display: inline-flex; align-items: center; gap: 12px;
-            padding: 18px 52px; background: var(--gradient-primary);
-            border: none; border-radius: var(--radius-full);
-            color: white; font-family: 'Inter', sans-serif;
-            font-size: 1.15rem; font-weight: 700; cursor: pointer;
-            text-decoration: none; transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+        /* ══════════════════════════════════════════════════════════════════════
+           RESPONSIVE DESIGN
+           ══════════════════════════════════════════════════════════════════════ */
+
+        /* ── iPhone SE / Small Phones (≤375px) ── */
+        @media (max-width: 375px) {
+            .hero-card {
+                width: 92%;
+                padding: 28px 20px 28px;
+                border-radius: 22px;
+            }
+            .hero-title {
+                font-size: 1.55rem;
+            }
+            .hero-subtitle {
+                font-size: 0.82rem;
+                margin-bottom: 22px;
+            }
+            .cta-btn {
+                padding: 12px 30px;
+                font-size: 0.9rem;
+            }
+            .popular-section {
+                gap: 6px;
+            }
+            .city-pill {
+                padding: 5px 12px;
+                font-size: 0.78rem;
+            }
         }
-        .cta-btn:hover { 
-            transform: translateY(-4px) scale(1.02); 
-            box-shadow: 0 15px 40px rgba(14, 165, 233, 0.45); 
-            filter: brightness(1.1); 
+
+        /* ── Regular Phones (376px–480px) ── */
+        @media (min-width: 376px) and (max-width: 480px) {
+            .hero-card {
+                width: 90%;
+                padding: 32px 24px 30px;
+            }
         }
-        .cta-btn svg { transition: transform 0.3s ease; }
-        .cta-btn:hover svg { transform: translateX(5px); }
 
-        /* ─── Animations ─── */
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes fadeInDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes titleGradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        /* ── Tablets (481px–768px) ── */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .hero-card {
+                width: 75%;
+                max-width: 440px;
+            }
+        }
 
-        @media(max-width:640px) {
-            .hero-card { padding: 40px 28px 36px; border-radius: 22px; }
-            .weather-anim { width: 110px; height: 110px; margin-bottom: 24px; }
-            .sun-core { width: 46px; height: 46px; }
-            .hero-title { font-size: 2.2rem; }
+        /* ── Short viewports (landscape phones) ── */
+        @media (max-height: 600px) {
+            .hero-card {
+                padding: 20px 24px 20px;
+            }
+            .hero-title {
+                font-size: 1.5rem;
+                margin-bottom: 8px;
+            }
+            .hero-subtitle {
+                font-size: 0.82rem;
+                margin-bottom: 16px;
+            }
+            .top-label {
+                margin-bottom: 10px;
+            }
+            .popular-section {
+                margin-top: 14px;
+            }
+        }
+
+        /* ── Large desktops ── */
+        @media (min-width: 1400px) {
+            .hero-card {
+                max-width: 500px;
+                padding: 48px 40px 44px;
+            }
+            .hero-title {
+                font-size: 2.6rem;
+            }
         }
     </style>
 </head>
-<body class="light-mode">
-    <!-- ─── Animated Background Layer ─── -->
-    <div class="sky-bg"></div>
-    <div class="stars-container" id="stars-container"></div>
-    <div class="bg-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="blob blob-3"></div>
+<body>
+    <!-- ─── Dynamic Floating Color Blobs ─── -->
+    <div class="bg-blob bg-blob-cyan"></div>
+    <div class="bg-blob bg-blob-orange"></div>
+    <div class="bg-blob bg-blob-white"></div>
+
+    <!-- ─── Subtle Background Stars ─── -->
+    <div class="stars-layer" id="stars-layer"></div>
+
+    <!-- ─── 3D Rotating Earth — Full Screen, Crisp, No Global Blur ─── -->
+    <div id="earth-canvas-container"></div>
+
+    <!-- ─── Floating Feature Cards (Side Panels) ─── -->
+    <div class="floating-cards-container">
+        <!-- Left Side -->
+        <div class="feature-card fc-left-1">
+            <div class="fc-icon blue">⚡</div>
+            <div class="fc-info">
+                <span class="fc-label">Live Anomaly Scan</span>
+                <span class="fc-value">Real-Time Detection</span>
+            </div>
+        </div>
+        <div class="feature-card fc-left-2">
+            <div class="fc-icon green">📊</div>
+            <div class="fc-info">
+                <span class="fc-label">Historical Data</span>
+                <span class="fc-value">12-Month Trends</span>
+            </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="feature-card fc-right-1">
+            <div class="fc-icon orange">🎯</div>
+            <div class="fc-info">
+                <span class="fc-label">AI Confidence</span>
+                <span class="fc-value">Smart Scoring</span>
+            </div>
+        </div>
+        <div class="feature-card fc-right-2">
+            <div class="fc-icon purple">🌍</div>
+            <div class="fc-info">
+                <span class="fc-label">Global Coverage</span>
+                <span class="fc-value">200K+ Cities</span>
+            </div>
+        </div>
     </div>
-    <div class="particles-layer" id="particles-layer"></div>
 
-    <!-- ─── Theme Toggle ─── -->
-    <div style="position: fixed; top: 24px; right: 24px; z-index: 1000;">
-        <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
-            <span id="theme-icon">🌙</span>
-        </button>
-    </div>
+    <!-- ─── Glassmorphism Hero Card ─── -->
+    <div class="hero-card" id="hero-card">
+        <!-- Top Label -->
+        <div class="top-label">REAL-TIME WEATHER INTELLIGENCE</div>
 
+        <!-- Main Title -->
+        <h1 class="hero-title">
+            Weather Anomaly<br>
+            <span class="highlight">Detection Tool</span>
+        </h1>
 
-    <!-- ─── Main Content ─── -->
-    <div class="landing-container">
-        <div class="hero-card">
-            <!-- Weather Animation -->
-            <div class="weather-anim">
-                <div class="sun-rays"></div>
-                <div class="sun-core"></div>
-                <div class="cloud cloud-1"></div>
-                <div class="cloud cloud-2"></div>
-                <div class="rain-drop" style="bottom:2px;right:20px;height:12px;animation-delay:0s"></div>
-                <div class="rain-drop" style="bottom:2px;right:35px;height:10px;animation-delay:0.3s"></div>
-                <div class="rain-drop" style="bottom:2px;right:50px;height:14px;animation-delay:0.6s"></div>
-                <div class="rain-drop" style="bottom:2px;right:65px;height:11px;animation-delay:0.9s"></div>
-            </div>
+        <!-- Subtitle -->
+        <p class="hero-subtitle">
+            Instantly identify unusual weather patterns using real-time insights and advanced historical analysis.
+        </p>
 
-            <!-- Tag -->
-            <div class="brand-tag">
-                <span class="dot"></span>
-                Weather Intelligence Platform
-            </div>
+        <!-- CTA Button -->
+        <a href="/dashboard" class="cta-btn" id="cta-explore">
+            <span>Explore Live Data</span>
+            <span class="cta-arrow">→</span>
+        </a>
 
-            <!-- Title -->
-            <h1 class="hero-title">Weather Anomaly <br><span class="highlight">Detection Tool</span></h1>
-            <p class="hero-subtitle">Detect unusual weather patterns using real-time and historical data</p>
-
-            <!-- CTA Section -->
-            <div style="margin-bottom: 48px; animation: fadeInUp 0.8s ease-out 0.4s both;">
-                <a href="/dashboard" class="cta-btn">
-                    <span>Get Started</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                    </svg>
-                </a>
-            </div>
-
-
-
-            <!-- Suggestion Tokens (Popular Cities) -->
-            <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; animation: fadeInUp 0.8s ease-out 0.6s both;">
-                <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Popular:</span>
-                <a href="javascript:void(0)" onclick="quickSearch('Delhi')" class="popular-city-tag">Delhi</a>
-                <a href="javascript:void(0)" onclick="quickSearch('Mumbai')" class="popular-city-tag">Mumbai</a>
-                <a href="javascript:void(0)" onclick="quickSearch('London')" class="popular-city-tag">London</a>
-                <a href="javascript:void(0)" onclick="quickSearch('New York')" class="popular-city-tag">New York</a>
-            </div>
+        <!-- Popular Cities -->
+        <div class="popular-section">
+            <span class="popular-label">Popular:</span>
+            <a href="javascript:void(0)" onclick="quickSearch('Delhi')" class="city-pill">Delhi</a>
+            <a href="javascript:void(0)" onclick="quickSearch('Mumbai')" class="city-pill">Mumbai</a>
+            <a href="javascript:void(0)" onclick="quickSearch('London')" class="city-pill">London</a>
+            <a href="javascript:void(0)" onclick="quickSearch('New York')" class="city-pill">New York</a>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="/static/script.js"></script>
+    <script src="/static/earth.js"></script>
     <script>
-        // Local search handler
-        function handleSearch() {
-            const city = document.getElementById('city-input').value.trim();
-            if (city) {
-                window.location.href = `/dashboard?city=${encodeURIComponent(city)}`;
-            } else {
-                document.getElementById('city-input').focus();
-            }
-        }
-
-        // Enter key support
-        document.getElementById('city-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
-        });
-
         function quickSearch(city) {
             window.location.href = `/dashboard?city=${encodeURIComponent(city)}`;
         }
-    </script>
 
+        // Generate subtle background stars
+        (function() {
+            const layer = document.getElementById('stars-layer');
+            if (!layer) return;
+            const count = 80;
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement('div');
+                star.className = 'star-dot';
+                const size = Math.random() * 2 + 0.5;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = (Math.random() * -3) + 's';
+                star.style.animationDuration = (2 + Math.random() * 3) + 's';
+                layer.appendChild(star);
+            }
+        })();
+        // Trigger floating animation for feature cards after entry
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const cards = document.querySelectorAll('.feature-card');
+                cards.forEach(card => card.classList.add('floating'));
+            }, 1500); // 1.5s delay to allow entry animation to finish
+        });
+    </script>
 </body>
 </html>

@@ -6,12 +6,20 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CHART INSTANCES
+// INSTANCES
 // ═══════════════════════════════════════════════════════════════════════════════
 let tempChartInstance = null;
 let rainChartInstance = null;
 let areaChartInstance = null;
 let comparisonChartInstance = null;
+
+let appMap = null;
+let tileLayer = null;
+let searchMarker = null;
+
+let cloudsLayer = null;
+let precipitationLayer = null;
+let pressureLayer = null;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STATE
@@ -35,13 +43,14 @@ const suggestionsDropdown = document.getElementById('suggestions-dropdown');
 // ═══════════════════════════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════════════
-// INITIALIZATION
-// ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initStars();
     initPlaceholderAnimation();
+    initMap();
+    init3DTilt();
+    initRipples();
+    initMobileNav();
 
     // Only init if we are on dashboard
     if (cityInput) {
@@ -54,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (suggestionsDropdown) {
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.input-wrapper')) {
+            if (!e.target.closest('.search-container')) {
                 suggestionsDropdown.classList.remove('active');
             }
         });
@@ -92,7 +101,7 @@ function toggleTheme() {
     const isDark = body.classList.toggle('dark-mode');
     
     // Smooth Transition
-    body.style.transition = 'background 0.4s ease, color 0.4s ease';
+    body.style.transition = 'background 0.15s ease, color 0.15s ease';
     
     // Save preference
     localStorage.setItem('weather-theme', isDark ? 'dark' : 'light');
@@ -107,6 +116,11 @@ function toggleTheme() {
 }
 
 function initTheme() {
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+        document.body.classList.remove('dark-mode');
+        return;
+    }
+
     const savedTheme = localStorage.getItem('weather-theme') || 'light';
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
@@ -169,17 +183,29 @@ function initStars() {
     const container = document.getElementById('stars-container');
     if (!container) return;
     
-    const starCount = 80;
+    // Clear out any existing stars to prevent duplicates during quick navigation
+    container.innerHTML = '';
+    
+    const starCount = 120;
     for (let i = 0; i < starCount; i++) {
         const star = document.createElement('div');
         star.className = 'star';
+        
+        // Random sizes for depth perception
         const size = Math.random() * 2 + 1;
         star.style.width = `${size}px`;
         star.style.height = `${size}px`;
+        
+        // Random positions
         star.style.left = `${Math.random() * 100}%`;
         star.style.top = `${Math.random() * 100}%`;
-        star.style.animationDelay = `${Math.random() * 4}s`;
-        star.style.opacity = Math.random();
+        
+        // Random animation delays so they don't all move/glow together
+        // starMove is 40s, starGlow is 3s
+        const moveDelay = Math.random() * -40;
+        const glowDelay = Math.random() * -3;
+        star.style.animationDelay = `${moveDelay}s, ${glowDelay}s`;
+        
         container.appendChild(star);
     }
 }
@@ -284,21 +310,34 @@ function quickCity(city) {
 // WEATHER CHECK
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function checkWeather() {
+async function checkWeather(coords = null) {
     const city = cityInput.value.trim();
-    if (!city) { showError('Please enter a city name.'); return; }
+    if (!city && !coords) { 
+        showError('Please enter a city name or use geolocation.'); 
+        return; 
+    }
 
     showLoading(true);
     hideError(); hideAlert(); hideResults();
+    
+    const welcomeWidgets = document.getElementById('welcome-widgets');
+    if (welcomeWidgets) welcomeWidgets.style.display = 'none';
 
     try {
+        const payload = coords ? { lat: coords.lat, lon: coords.lon } : { city };
         const response = await fetch('/api/check-weather', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city })
+            body: JSON.stringify(payload)
         });
         const data = await response.json();
         if (data.error) { showError(data.error); return; }
+        
+        // Update input field if we found the city via GPS
+        if (coords && data.city && cityInput) {
+            cityInput.value = data.city;
+        }
+        
         displayResults(data);
     } catch (err) {
         showError('Network error. Please check your connection and try again.');
@@ -364,6 +403,52 @@ function displayResults(data) {
     setTrend('rain-trend-label', data.rain_trend, data.rain_diff, 'mm');
     setConfidence('temp-confidence', data.temp_confidence);
 
+    // Show container BEFORE rendering graphics so sizes compute correctly
+    resultsSection.classList.add('active', 'section-reveal');
+    document.body.classList.add('analysis-active');
+
+    // Map Interaction
+    if (appMap && data.lat !== undefined && data.lon !== undefined) {
+        appMap.invalidateSize(); // Fixes gray map when toggling display
+        appMap.flyTo([data.lat, data.lon], 10, { animate: true, duration: 1.5 });
+
+        // Turn on weather map layer automatically upon searching
+        if (cloudsLayer && !appMap.hasLayer(cloudsLayer)) {
+            appMap.addLayer(cloudsLayer);
+        }
+
+        if (searchMarker) {
+            appMap.removeLayer(searchMarker);
+        }
+
+        const devThreshold = 10;
+        const isAnomaly = Math.abs(data.temp_diff) > devThreshold;
+        
+        const markerColor = isAnomaly ? '#ef4444' : '#3b82f6';
+        const fillColor = isAnomaly ? '#fca5a5' : '#93c5fd';
+
+        searchMarker = L.circleMarker([data.lat, data.lon], {
+            radius: 12,
+            color: markerColor,
+            weight: 3,
+            fillColor: fillColor,
+            fillOpacity: 0.8
+        }).addTo(appMap);
+
+        const popupContent = `
+            <div class="custom-map-popup" style="font-family: 'Inter', sans-serif; text-align: center; min-width: 130px;">
+                <strong style="font-size: 1.2em; display: block; margin-bottom: 5px;">${data.city}</strong>
+                <span style="font-size: 1.6em; font-weight: 800; color: ${markerColor}; display: block; margin-bottom: 5px;">${data.current_temp}°C</span>
+                <span style="font-size: 0.9em; padding: 4px 8px; border-radius: 20px; background: ${isAnomaly ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)'}; color: ${markerColor}; font-weight: 600;">
+                    ${isAnomaly ? 'High Deviation Anomaly' : 'Normal Range'}
+                </span>
+                ${isAnomaly ? `<p style="margin-top: 8px; font-size: 0.8em; color: #64748b;">Diff: ${data.temp_diff > 0 ? '+' : ''}${data.temp_diff}°C</p>` : ''}
+            </div>
+        `;
+
+        searchMarker.bindPopup(popupContent, { className: 'glass-popup' }).openPopup();
+    }
+
     // Card highlights
     const tempDiffCard = document.getElementById('card-temp-diff');
     const rainCard = document.getElementById('card-rainfall');
@@ -408,8 +493,7 @@ function displayResults(data) {
     // Charts
     renderCharts(data);
 
-    // Show
-    resultsSection.classList.add('active', 'section-reveal');
+    // Scroll
     setTimeout(() => resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 }
 
@@ -658,6 +742,224 @@ function retrySearch() { hideError(); cityInput.focus(); }
 
 function resetSearch() {
     hideResults(); hideAlert(); hideError();
+    document.body.classList.remove('analysis-active');
+    
+    const welcomeWidgets = document.getElementById('welcome-widgets');
+    if (welcomeWidgets) welcomeWidgets.style.display = 'block';
+    
     cityInput.value = ''; cityInput.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAP INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function initMap() {
+    const mapContainer = document.getElementById('weather-map');
+    if (!mapContainer) return;
+
+    appMap = L.map('weather-map').setView([20, 0], 2);
+
+    const baseTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    tileLayer = L.tileLayer(baseTileUrl, {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(appMap);
+
+    const apiKey = window.OPENWEATHER_API_KEY;
+    if (apiKey) {
+        const precipitationLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, { attribution: 'OpenWeather' });
+        const cloudsLayer = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, { attribution: 'OpenWeather' });
+        const pressureLayer = L.tileLayer(`https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`, { attribution: 'OpenWeather' });
+
+        const overlayMaps = {
+            "Precipitation": precipitationLayer,
+            "Clouds": cloudsLayer,
+            "Pressure": pressureLayer
+        };
+
+        L.control.layers(null, overlayMaps, { position: 'topright' }).addTo(appMap);
+    }
+
+    fetch('/api/map-data')
+        .then(res => res.json())
+        .then(data => {
+            const cities = data.data || [];
+            cities.forEach(cityData => {
+                const markerColor = cityData.is_anomaly ? '#ef4444' : '#3b82f6';
+                const fillColor = cityData.is_anomaly ? '#fca5a5' : '#93c5fd';
+
+                const circleMarker = L.circleMarker([cityData.lat, cityData.lon], {
+                    radius: 8, color: markerColor, weight: 2, fillColor: fillColor, fillOpacity: 0.7
+                }).addTo(appMap);
+
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif; text-align: center;">
+                        <strong style="font-size: 1.1em;">${cityData.city}</strong><br/>
+                        <span style="font-size: 1.5em; font-weight: bold; color: ${markerColor};">${cityData.current_temp}°C</span><br/>
+                        <span style="color: ${cityData.is_anomaly ? 'red' : 'green'}; font-weight: 500;">
+                            ${cityData.status}
+                        </span>
+                    </div>
+                `;
+                circleMarker.bindPopup(popupContent, { className: 'glass-popup' });
+            });
+        })
+        .catch(err => console.error("Error fetching global map data:", err));
+
+    const locateBtn = document.getElementById('locate-me-btn');
+    if (locateBtn) {
+        locateBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                locateBtn.innerHTML = '<span style="margin-right: 5px;">⏳</span>Locating...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        // Direct fetch using coordinates for higher reliability
+                        checkWeather({ lat, lon });
+                        
+                        locateBtn.innerHTML = '<span style="margin-right: 5px;">📍</span>Locate Me';
+                    },
+                    (error) => {
+                        alert("Geolocation failed: " + error.message);
+                        locateBtn.innerHTML = '<span style="margin-right: 5px;">📍</span>Locate Me';
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3D TILT EFFECT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function init3DTilt() {
+    // Select all our nice cards
+    const cards = document.querySelectorAll('.stat-card, .chart-card, .insight-card, .premium-cta-area, .summary-card, .anomaly-details-card, .dataset-summary, .glass-card, .city-header');
+    
+    cards.forEach(card => {
+        // Initial smooth lift when cursor enters bounds
+        card.addEventListener('mouseenter', () => {
+            card.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease-out';
+            card.style.transform = `perspective(1000px) translateY(-10px) scale(1.02) rotateX(0deg) rotateY(0deg)`;
+            card.style.boxShadow = `0px 15px 40px rgba(14, 165, 233, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.25)`;
+        });
+
+        card.addEventListener('mousemove', e => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            // Calculate rotation (max 6 degrees for subtle premium feel)
+            const rotateX = ((y - centerY) / centerY) * -6; 
+            const rotateY = ((x - centerX) / centerX) * 6;
+            
+            // Apply transform instantly while moving
+            card.style.transition = 'transform 0.1s ease-out, box-shadow 0.1s ease-out';
+            card.style.transform = `perspective(1000px) translateY(-10px) scale(1.02) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            
+            // Dynamic premium shadow that moves opposite to tilt
+            const shadowX = -rotateY * 2;
+            const shadowY = (rotateX * 2) + 15; // Increased Y shadow for lifted effect
+            card.style.boxShadow = `${shadowX}px ${shadowY}px 40px rgba(14, 165, 233, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.25)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            // Restore smooth bounce-back transition
+            card.style.transition = 'transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            card.style.transform = `perspective(1000px) translateY(0px) scale(1) rotateX(0deg) rotateY(0deg)`;
+            card.style.boxShadow = '';
+            
+            // Clear inline styles so css hover handles them again
+            setTimeout(() => {
+                if (!card.matches(':hover')) {
+                    card.style.transition = '';
+                    card.style.transform = '';
+                    card.style.boxShadow = '';
+                }
+            }, 600);
+        });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RIPPLE EFFECT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function createRipple(event) {
+    const button = event.currentTarget;
+    const circle = document.createElement("span");
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+
+    const rect = button.getBoundingClientRect();
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${event.clientX - rect.left - radius}px`;
+    circle.style.top = `${event.clientY - rect.top - radius}px`;
+    circle.classList.add("ripple");
+    
+    if (document.body.classList.contains('light-mode')) {
+        circle.classList.add("dark-ripple");
+    }
+
+    const ripple = button.getElementsByClassName("ripple")[0];
+    if (ripple) {
+        ripple.remove();
+    }
+
+    button.appendChild(circle);
+}
+
+function initRipples() {
+    const buttons = document.querySelectorAll('.ripple-btn');
+    for (const button of buttons) {
+        button.addEventListener("click", createRipple);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SPA VIEW ROUTING & ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE SIDEBAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar-panel');
+    const overlay = document.getElementById('mobile-overlay');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+        document.body.classList.toggle('sidebar-open');
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebar-panel');
+    const overlay = document.getElementById('mobile-overlay');
+    
+    if (sidebar && overlay && sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+    }
+}
+
+function initMobileNav() {
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', closeMobileSidebar);
+    });
 }

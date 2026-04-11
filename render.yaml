@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: weather-anomaly-tool
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: OPENWEATHER_API_KEY
+        sync: false
