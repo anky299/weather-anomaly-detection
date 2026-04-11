@@ -19,7 +19,14 @@ app = Flask(__name__)
 # Local fallback is provided but should be replaced by .env or system variables
 API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-GEOCODE_URL = "http://api.openweathermap.org/geo/1.0/direct"
+GEOCODE_URL = "https://api.openweathermap.org/geo/1.0/direct"
+
+# Diagnostic check for Render logs
+if not API_KEY:
+    print("⚠️ WARNING: OPENWEATHER_API_KEY environment variable is not set!")
+else:
+    print(f"✅ API Key detected (Suffix: ...{API_KEY[-4:]})")
+
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data", "weather.csv")
 
 # Anomaly detection thresholds

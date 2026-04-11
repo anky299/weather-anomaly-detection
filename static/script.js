@@ -726,7 +726,8 @@ function showLoading(show) {
 
 function showError(msg) {
     showLoading(false);
-    errorText.textContent = msg;
+    console.error('Weather App Error:', msg);
+    errorText.innerHTML = `<strong>Search Failed:</strong> ${msg}<br><small style="opacity: 0.7; font-size: 0.8em; margin-top: 5px; display: block;">Check Render logs for more details.</small>`;
     errorContainer.classList.add('active');
 }
 
