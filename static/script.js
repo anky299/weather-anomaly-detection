@@ -279,7 +279,7 @@ async function fetchGeocodeSuggestions(query) {
         }
 
         suggestionsDropdown.innerHTML = results.map(r => `
-            <div class="suggestion-item" onclick="selectSuggestion('${r.city.replace(/'/g, "\\'")}')">
+            <div class="suggestion-item" onclick="selectSuggestion('${r.city.replace(/'/g, "\\'")}', ${r.lat}, ${r.lon})">
                 <svg class="suggestion-pin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                     <circle cx="12" cy="10" r="3"/>
@@ -294,10 +294,14 @@ async function fetchGeocodeSuggestions(query) {
     }
 }
 
-function selectSuggestion(city) {
+function selectSuggestion(city, lat, lon) {
     cityInput.value = city;
     suggestionsDropdown.classList.remove('active');
-    checkWeather();
+    if (lat !== undefined && lon !== undefined) {
+        checkWeather({ lat, lon });
+    } else {
+        checkWeather();
+    }
 }
 
 function quickCity(city) {

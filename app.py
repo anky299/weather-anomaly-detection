@@ -10,22 +10,26 @@ import pandas as pd
 from flask import Flask, render_template, request, jsonify
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (force override to ensure .env values are used)
+load_dotenv(override=True)
 
 # ─── Flask App Initialization ───────────────────────────────────────────────────
 app = Flask(__name__)
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 # API Key is sourced from the environment for security on deployment
-# Local fallback is provided but should be replaced by .env or system variables
 API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 GEOCODE_URL = "https://api.openweathermap.org/geo/1.0/direct"
 
-# Diagnostic check for Render logs
+# Diagnostic check for Render/Local logs
 if not API_KEY:
-    print("⚠️ WARNING: OPENWEATHER_API_KEY environment variable is not set!")
+    print("CRITICAL: OPENWEATHER_API_KEY environment variable is missing!")
 else:
-    print(f"✅ API Key detected (Suffix: ...{API_KEY[-4:]})")
+    # Print partial key for verification without leaking full key
+    print(f"DEBUG: API Key detected (Prefix: {API_KEY[:4]}... Suffix: ...{API_KEY[-4:]})")
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data", "weather.csv")
 
@@ -173,14 +177,19 @@ def fetch_api_data(city=None, lat=None, lon=None):
         else:
             return {"error": "No city name or coordinates provided."}
 
+        url = f"{BASE_URL}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
+        print(f"DEBUG: Calling OpenWeather API: {BASE_URL} (City: {city}, Lat: {lat}, Lon: {lon})")
+        
         response = requests.get(BASE_URL, params=params, timeout=10)
 
-        if response.status_code == 401:
-            return {"error": "Invalid API key. Please check your OpenWeather API key."}
-        elif response.status_code == 404:
-            return {"error": f"Weather data not found for the requested location."}
-        elif response.status_code != 200:
-            return {"error": f"API error (status {response.status_code}). Please try again later."}
+        if response.status_code != 200:
+            print(f"ERROR: OpenWeather API returned {response.status_code}. Response: {response.text}")
+            if response.status_code == 401:
+                return {"error": "Invalid API key. Please check your OpenWeather API key."}
+            elif response.status_code == 404:
+                return {"error": f"Weather data not found for the requested location."}
+            else:
+                return {"error": f"API error (status {response.status_code}). Please try again later."}
 
         data = response.json()
 
@@ -494,4 +503,4 @@ def map_data():
 
 # ─── Run ────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
