@@ -181,6 +181,106 @@
                 </svg>
             </div>
 
+            <!-- ─── CSV Upload — Compact Inline Strip ─── -->
+            <div class="csv-strip-section anim-fade-up anim-delay-2" id="csv-upload-section">
+                <div class="csv-strip-divider">
+                    <span class="csv-strip-divider-line"></span>
+                    <span class="csv-strip-divider-text">or</span>
+                    <span class="csv-strip-divider-line"></span>
+                </div>
+
+                <div class="csv-strip-card" id="csv-strip-card">
+                    <div class="csv-strip-glow"></div>
+                    <div class="csv-strip-inner">
+                        <div class="csv-strip-left">
+                            <div class="csv-strip-icon-wrap">
+                                <span class="csv-strip-icon">📊</span>
+                            </div>
+                            <div class="csv-strip-info">
+                                <span class="csv-strip-title">Upload CSV for Anomaly Detection</span>
+                                <span class="csv-strip-sub" id="csv-strip-sub">Drag a file here or click to browse — <strong>Date, Temperature, Rainfall</strong> columns required</span>
+                            </div>
+                        </div>
+                        <div class="csv-strip-right">
+                            <button class="csv-strip-browse-btn ripple-btn" id="csv-strip-browse-btn" onclick="document.getElementById('csv-file-input').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span>Choose File</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- File selected state -->
+                    <div class="csv-strip-selected" id="csv-strip-selected" style="display:none;">
+                        <div class="csv-strip-file-badge">
+                            <span class="csv-file-emoji">📄</span>
+                            <span class="csv-strip-filename" id="csv-strip-filename">file.csv</span>
+                            <span class="csv-strip-filesize" id="csv-strip-filesize">0 KB</span>
+                            <button class="csv-strip-remove" id="csv-strip-remove" title="Remove">✕</button>
+                        </div>
+                        <button class="csv-strip-analyze-btn ripple-btn" id="csv-analyze-btn" onclick="analyzeCSV()">
+                            <span>Analyze</span>
+                            <svg class="btn-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="csv-file-input" class="csv-file-input" accept=".csv" />
+            </div>
+
+            <!-- CSV Results (shown after analysis) -->
+            <div class="csv-results-section" id="csv-results-section">
+                <div class="csv-results-wrap glass-card">
+                    <div class="csv-results-header">
+                        <h3><span>📊</span> CSV Analysis Results</h3>
+                        <button class="csv-results-close" onclick="document.getElementById('csv-results-section').classList.remove('active')">✕</button>
+                    </div>
+
+                    <div class="csv-summary-grid" id="csv-summary-grid">
+                        <div class="csv-summary-card">
+                            <span class="csv-stat-value" id="csv-total-rows">0</span>
+                            <span class="csv-stat-label">Total Rows</span>
+                        </div>
+                        <div class="csv-summary-card">
+                            <span class="csv-stat-value anomaly-color" id="csv-total-anomalies">0</span>
+                            <span class="csv-stat-label">Anomalies</span>
+                        </div>
+                        <div class="csv-summary-card">
+                            <span class="csv-stat-value temp-color" id="csv-temp-anomalies">0</span>
+                            <span class="csv-stat-label">Temp Anomalies</span>
+                        </div>
+                        <div class="csv-summary-card">
+                            <span class="csv-stat-value rain-color" id="csv-rain-anomalies">0</span>
+                            <span class="csv-stat-label">Rain Anomalies</span>
+                        </div>
+                    </div>
+
+                    <div class="csv-anomaly-table-wrap" id="csv-anomaly-table-wrap">
+                        <table class="csv-anomaly-table" id="csv-anomaly-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Temp (°C)</th>
+                                    <th>Avg Temp</th>
+                                    <th>Rain (mm)</th>
+                                    <th>Avg Rain</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="csv-anomaly-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="csv-charts-section">
+                        <div class="csv-chart-card glass-card">
+                            <h3 class="section-title"><span class="section-icon">🌡️</span>CSV Temperature Trends</h3>
+                            <div class="csv-chart-wrapper"><canvas id="csvTempChart"></canvas></div>
+                        </div>
+                        <div class="csv-chart-card glass-card">
+                            <h3 class="section-title"><span class="section-icon">🌧️</span>CSV Rainfall Pattern</h3>
+                            <div class="csv-chart-wrapper"><canvas id="csvRainChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="welcome-widgets">
                 <div class="anim-fade-up anim-delay-2" style="margin-bottom: 24px;">
                     <div class="quick-cities anim-fade-up anim-delay-3" id="quick-cities">

@@ -501,6 +501,152 @@ def map_data():
     return jsonify({"data": cities_data})
 
 
+@app.route("/api/analyze-csv", methods=["POST"])
+def analyze_csv():
+    """Analyze an uploaded CSV file for weather anomalies.
+    
+    Expected CSV columns: Date, Temperature, Rainfall (and optionally Location).
+    Returns per-row anomaly analysis, summary stats, and chart data.
+    """
+    import io
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded. Please select a CSV file."}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected."}), 400
+
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({"error": "Invalid file type. Please upload a CSV file."}), 400
+
+    # Read optional threshold parameters
+    temp_threshold = float(request.form.get('temp_threshold', TEMP_THRESHOLD))
+    rain_threshold = float(request.form.get('rain_threshold', RAINFALL_THRESHOLD))
+
+    try:
+        # Read CSV from upload
+        content = file.read().decode('utf-8')
+        df = pd.read_csv(io.StringIO(content))
+
+        # Validate required columns
+        required_cols = ['Date', 'Temperature', 'Rainfall']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            return jsonify({
+                "error": f"Missing required columns: {', '.join(missing_cols)}. "
+                         f"CSV must have: Date, Temperature, Rainfall (and optionally Location)."
+            }), 400
+
+        # Parse dates
+        try:
+            df['Date'] = pd.to_datetime(df['Date'], format='mixed', dayfirst=False)
+        except Exception:
+            return jsonify({"error": "Could not parse Date column. Use formats like YYYY-MM-DD."}), 400
+
+        df['Month'] = df['Date'].dt.month
+
+        # Check if Location column exists
+        has_location = 'Location' in df.columns
+        locations = sorted(df['Location'].unique().tolist()) if has_location else []
+
+        # Compute monthly averages (from the uploaded data itself)
+        monthly_avg = df.groupby('Month').agg(
+            avg_temp=('Temperature', 'mean'),
+            avg_rainfall=('Rainfall', 'mean')
+        ).reset_index()
+
+        # Per-row anomaly detection
+        rows_analysis = []
+        total_temp_anomalies = 0
+        total_rain_anomalies = 0
+
+        for _, row in df.iterrows():
+            month = row['Date'].month
+            avg_row = monthly_avg[monthly_avg['Month'] == month]
+
+            if avg_row.empty:
+                continue
+
+            avg_temp = float(avg_row['avg_temp'].values[0])
+            avg_rain = float(avg_row['avg_rainfall'].values[0])
+            temp = float(row['Temperature'])
+            rain = float(row['Rainfall'])
+
+            temp_diff = round(temp - avg_temp, 1)
+            rain_diff = round(rain - avg_rain, 1)
+            is_temp_anomaly = abs(temp_diff) > temp_threshold
+            is_rain_anomaly = abs(rain_diff) > rain_threshold
+
+            if is_temp_anomaly:
+                total_temp_anomalies += 1
+            if is_rain_anomaly:
+                total_rain_anomalies += 1
+
+            row_data = {
+                "date": row['Date'].strftime('%Y-%m-%d'),
+                "temperature": round(temp, 1),
+                "rainfall": round(rain, 1),
+                "avg_temp": round(avg_temp, 1),
+                "avg_rainfall": round(avg_rain, 1),
+                "temp_diff": float(temp_diff),
+                "rain_diff": float(rain_diff),
+                "is_temp_anomaly": bool(is_temp_anomaly),
+                "is_rain_anomaly": bool(is_rain_anomaly),
+                "is_anomaly": bool(is_temp_anomaly or is_rain_anomaly)
+            }
+
+            if has_location:
+                row_data["location"] = str(row['Location'])
+
+            rows_analysis.append(row_data)
+
+        # Chart data
+        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        chart_labels = []
+        chart_avg_temps = []
+        chart_avg_rainfalls = []
+
+        for _, mrow in monthly_avg.iterrows():
+            month_idx = int(mrow['Month']) - 1
+            chart_labels.append(month_names[month_idx])
+            chart_avg_temps.append(round(float(mrow['avg_temp']), 1))
+            chart_avg_rainfalls.append(round(float(mrow['avg_rainfall']), 1))
+
+        total_rows = len(rows_analysis)
+        total_anomalies = total_temp_anomalies + total_rain_anomalies
+
+        response = {
+            "success": True,
+            "filename": file.filename,
+            "total_rows": total_rows,
+            "total_anomalies": int(total_anomalies),
+            "temp_anomalies": int(total_temp_anomalies),
+            "rain_anomalies": int(total_rain_anomalies),
+            "thresholds": {
+                "temperature": float(temp_threshold),
+                "rainfall": float(rain_threshold)
+            },
+            "locations": locations,
+            "rows": rows_analysis,
+            "chart_data": {
+                "labels": chart_labels,
+                "avg_temps": chart_avg_temps,
+                "avg_rainfalls": chart_avg_rainfalls
+            }
+        }
+
+        return jsonify(response)
+
+    except pd.errors.EmptyDataError:
+        return jsonify({"error": "The uploaded CSV file is empty."}), 400
+    except Exception as e:
+        return jsonify({"error": f"Error processing CSV: {str(e)}"}), 500
+
+
 # ─── Run ────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+

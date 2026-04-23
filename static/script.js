@@ -968,3 +968,313 @@ function initMobileNav() {
         item.addEventListener('click', closeMobileSidebar);
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CSV FILE UPLOAD & ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let csvSelectedFile = null;
+let csvTempChartInstance = null;
+let csvRainChartInstance = null;
+
+function initCSVUpload() {
+    const stripCard = document.getElementById('csv-strip-card');
+    const fileInput = document.getElementById('csv-file-input');
+    const removeBtn = document.getElementById('csv-strip-remove');
+
+    if (!stripCard || !fileInput) return;
+
+    // Drag & Drop on the entire strip card
+    ['dragenter', 'dragover'].forEach(event => {
+        stripCard.addEventListener(event, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            stripCard.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(event => {
+        stripCard.addEventListener(event, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            stripCard.classList.remove('dragover');
+        });
+    });
+
+    stripCard.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleCSVFileSelect(files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleCSVFileSelect(e.target.files[0]);
+        }
+    });
+
+    // Remove button
+    if (removeBtn) {
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearCSVFile();
+        });
+    }
+}
+
+function handleCSVFileSelect(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file.');
+        return;
+    }
+
+    csvSelectedFile = file;
+
+    // Show selected file state
+    const selectedDiv = document.getElementById('csv-strip-selected');
+    const fileName = document.getElementById('csv-strip-filename');
+    const fileSize = document.getElementById('csv-strip-filesize');
+    const stripInner = document.querySelector('.csv-strip-inner');
+
+    if (fileName) fileName.textContent = file.name;
+    if (fileSize) {
+        const sizeKB = (file.size / 1024).toFixed(1);
+        fileSize.textContent = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB + ' KB';
+    }
+    if (selectedDiv) selectedDiv.style.display = 'flex';
+
+    // Update the strip subtitle
+    const subText = document.getElementById('csv-strip-sub');
+    if (subText) subText.innerHTML = `<strong style="color: #10b981;">File ready!</strong> Click Analyze to detect anomalies`;
+
+    // Hide results from previous analysis
+    const results = document.getElementById('csv-results-section');
+    if (results) results.classList.remove('active');
+}
+
+function clearCSVFile() {
+    csvSelectedFile = null;
+    const fileInput = document.getElementById('csv-file-input');
+    const selectedDiv = document.getElementById('csv-strip-selected');
+    const results = document.getElementById('csv-results-section');
+    const subText = document.getElementById('csv-strip-sub');
+
+    if (fileInput) fileInput.value = '';
+    if (selectedDiv) selectedDiv.style.display = 'none';
+    if (results) results.classList.remove('active');
+    if (subText) subText.innerHTML = 'Drag a file here or click to browse — <strong>Date, Temperature, Rainfall</strong> columns required';
+}
+
+async function analyzeCSV() {
+    if (!csvSelectedFile) {
+        alert('Please select a CSV file first.');
+        return;
+    }
+
+    const analyzeBtn = document.getElementById('csv-analyze-btn');
+    if (analyzeBtn) {
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<span>Analyzing...</span>';
+    }
+
+
+    try {
+        const formData = new FormData();
+        formData.append('file', csvSelectedFile);
+
+        const response = await fetch('/api/analyze-csv', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        displayCSVResults(data);
+    } catch (err) {
+        alert('Network error. Please try again.');
+        console.error('CSV upload error:', err);
+    } finally {
+        if (analyzeBtn) {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = `
+                <span>Analyze</span>
+                <svg class="btn-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+            `;
+        }
+    }
+}
+
+function displayCSVResults(data) {
+    // Summary stats
+    const totalRows = document.getElementById('csv-total-rows');
+    const totalAnomalies = document.getElementById('csv-total-anomalies');
+    const tempAnomalies = document.getElementById('csv-temp-anomalies');
+    const rainAnomalies = document.getElementById('csv-rain-anomalies');
+
+    if (totalRows) totalRows.textContent = data.total_rows;
+    if (totalAnomalies) totalAnomalies.textContent = data.total_anomalies;
+    if (tempAnomalies) tempAnomalies.textContent = data.temp_anomalies;
+    if (rainAnomalies) rainAnomalies.textContent = data.rain_anomalies;
+
+    // Build table (show max 50 rows to avoid performance issues)
+    const tbody = document.getElementById('csv-anomaly-tbody');
+    if (tbody) {
+        const rows = data.rows || [];
+        const displayRows = rows.slice(0, 50);
+
+        tbody.innerHTML = displayRows.map(row => {
+            const isAnomaly = row.is_anomaly;
+            const statusBadge = isAnomaly
+                ? '<span class="csv-table-badge anomaly">Anomaly</span>'
+                : '<span class="csv-table-badge normal">Normal</span>';
+
+            return `
+                <tr class="${isAnomaly ? 'anomaly-row' : ''}">
+                    <td>${row.date}</td>
+                    <td><strong>${row.temperature}</strong></td>
+                    <td>${row.avg_temp}</td>
+                    <td><strong>${row.rainfall}</strong></td>
+                    <td>${row.avg_rainfall}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+
+        if (rows.length > 50) {
+            tbody.innerHTML += `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 16px;">
+                        Showing 50 of ${rows.length} rows
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Render CSV charts
+    renderCSVCharts(data);
+
+    // Show results section
+    const results = document.getElementById('csv-results-section');
+    if (results) {
+        results.classList.add('active');
+        setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+}
+
+function renderCSVCharts(data) {
+    const cd = data.chart_data;
+    if (!cd) return;
+
+    if (csvTempChartInstance) csvTempChartInstance.destroy();
+    if (csvRainChartInstance) csvRainChartInstance.destroy();
+
+    const textColor = getChartTextColor();
+    const gridColor = getChartGridColor();
+
+    const tooltip = {
+        backgroundColor: getChartTooltipBg(),
+        titleColor: getChartTooltipTitle(),
+        bodyColor: getChartTooltipBody(),
+        borderColor: getChartTooltipBorder(),
+        borderWidth: 1,
+        cornerRadius: 10,
+        padding: 14,
+        titleFont: { weight: '700' }
+    };
+
+    // CSV Temperature Chart
+    const tempCanvas = document.getElementById('csvTempChart');
+    if (tempCanvas) {
+        const tempCtx = tempCanvas.getContext('2d');
+        const tg = tempCtx.createLinearGradient(0, 0, 0, 260);
+        tg.addColorStop(0, 'rgba(139, 92, 246, 0.2)');
+        tg.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+        csvTempChartInstance = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: cd.labels,
+                datasets: [{
+                    label: 'Avg Temperature (°C)',
+                    data: cd.avg_temps,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: tg,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#8b5cf6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 11, weight: '600' } } },
+                    tooltip
+                },
+                scales: {
+                    y: { grid: { color: gridColor }, ticks: { callback: v => v + '°C', font: { size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // CSV Rainfall Chart
+    const rainCanvas = document.getElementById('csvRainChart');
+    if (rainCanvas) {
+        const rainCtx = rainCanvas.getContext('2d');
+        const rainGrads = cd.labels.map(() => {
+            const g = rainCtx.createLinearGradient(0, 0, 0, 260);
+            g.addColorStop(0, 'rgba(6, 182, 212, 0.7)');
+            g.addColorStop(1, 'rgba(139, 92, 246, 0.3)');
+            return g;
+        });
+
+        csvRainChartInstance = new Chart(rainCtx, {
+            type: 'bar',
+            data: {
+                labels: cd.labels,
+                datasets: [{
+                    label: 'Avg Rainfall (mm)',
+                    data: cd.avg_rainfalls,
+                    backgroundColor: rainGrads,
+                    borderColor: '#06b6d4',
+                    borderWidth: 1.5,
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { padding: 16, usePointStyle: true, pointStyle: 'rect', font: { size: 11, weight: '600' } } },
+                    tooltip
+                },
+                scales: {
+                    y: { grid: { color: gridColor }, ticks: { callback: v => v + ' mm', font: { size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+}
+
+// Initialize CSV upload on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    initCSVUpload();
+});

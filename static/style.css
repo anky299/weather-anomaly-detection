@@ -1310,42 +1310,6 @@ html { scroll-behavior: smooth; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media(max-width:768px) {
-    .navbar { padding: 10px 16px; }
-    .nav-title { font-size: 0.9rem; }
-    .app-container { padding: 16px 16px 32px; }
-    body.light-mode .app-container { padding: 20px 18px 36px; }
-    .charts-section { grid-template-columns: 1fr; }
-    .anomaly-grid { grid-template-columns: 1fr; }
-    .city-header { flex-direction: column; align-items: flex-start; }
-    .city-header-right { flex-direction: row-reverse; width: 100%; justify-content: space-between; }
-    .summary-stats { flex-direction: column; gap: 20px; }
-    .alert-inner { flex-direction: column; align-items: flex-start; }
-    .alert-meta { flex-direction: row; align-items: center; gap: 10px; }
-
-    .premium-cta-area { flex-direction: column; text-align: center; gap: 20px; }
-    .quick-insights { grid-template-columns: 1fr; }
-    .footer-content { flex-direction: column; gap: 30px; }
-    .footer-links { flex-direction: column; gap: 30px; }
-}
-
-@media(max-width:640px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .search-card { padding: 18px; }
-    .search-inner { flex-direction: column; }
-    #check-btn { width: 100%; justify-content: center; border-radius: var(--radius-full); }
-    .quick-cities { justify-content: center; }
-    .stat-value { font-size: 1.8rem; }
-    .weather-icon-lg { width: 56px; height: 56px; }
-    .city-name { font-size: 1.4rem; }
-    .page-title { font-size: 1.3rem; }
-    .chart-wrapper { height: 220px; }
-    .temp-hero-val { font-size: 2.2rem; }
-    .live-indicator .live-text { display: none; }
-    .theme-toggle { width: 46px; height: 24px; }
-    .toggle-thumb { width: 18px; height: 18px; font-size: 10px; }
-    body.light-mode .toggle-thumb { transform: translateX(22px); }
-}
 
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1604,36 +1568,502 @@ body.light-mode #view-system-info {
     opacity: 1;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CSV UPLOAD — COMPACT STRIP DESIGN
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.csv-strip-section {
+    margin: 6px auto 0;
+    max-width: 780px;
+    padding: 0 15px;
+    position: relative;
+    z-index: 5;
+}
+
+/* ── "or" divider ── */
+.csv-strip-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 8px 0 12px;
+}
+
+.csv-strip-divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-card-hover), transparent);
+}
+
+.csv-strip-divider-text {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    opacity: 0.7;
+}
+
+/* ── Main strip card ── */
+.csv-strip-card {
+    position: relative;
+    border-radius: 18px;
+    padding: 16px 22px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    cursor: pointer;
+}
+
+.csv-strip-card:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow:
+        0 8px 32px rgba(139, 92, 246, 0.08),
+        0 0 0 1px rgba(139, 92, 246, 0.1);
+}
+
+.csv-strip-card.dragover {
+    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.04);
+    transform: translateY(-3px) scale(1.005);
+    box-shadow:
+        0 12px 40px rgba(139, 92, 246, 0.15),
+        0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* ── Animated gradient glow bar at top ── */
+.csv-strip-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        #8b5cf6 20%, 
+        #06b6d4 40%, 
+        #10b981 60%, 
+        #f59e0b 80%, 
+        transparent
+    );
+    background-size: 200% 100%;
+    animation: csvGlowSlide 4s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+@keyframes csvGlowSlide {
+    0%, 100% { background-position: 200% 0; }
+    50% { background-position: -200% 0; }
+}
+
+.csv-strip-card:hover .csv-strip-glow {
+    opacity: 1;
+    height: 3px;
+}
+
+/* ── Inner layout ── */
+.csv-strip-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.csv-strip-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.csv-strip-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.08));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.csv-strip-card:hover .csv-strip-icon-wrap {
+    transform: scale(1.08) rotate(-3deg);
+}
+
+.csv-strip-icon {
+    font-size: 1.2rem;
+}
+
+.csv-strip-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.csv-strip-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.csv-strip-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+.csv-strip-sub strong {
+    color: var(--text-secondary);
+}
+
+.csv-strip-right {
+    flex-shrink: 0;
+}
+
+/* ── Browse button ── */
+.csv-strip-browse-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.csv-strip-browse-btn:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+}
+
+.csv-strip-browse-btn svg {
+    transition: transform 0.3s;
+}
+
+.csv-strip-browse-btn:hover svg {
+    transform: translateY(-2px);
+}
+
+/* ── Selected file state ── */
+.csv-strip-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    margin-top: 14px;
+    border-top: 1px solid var(--border-card);
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.csv-strip-file-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.12);
+    flex: 1;
+    min-width: 0;
+}
+
+.csv-file-emoji {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.csv-strip-filename {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.csv-strip-filesize {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.csv-strip-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.csv-strip-remove:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── Analyze button (in selected state) ── */
+.csv-strip-analyze-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.csv-strip-analyze-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.45);
+}
+
+.csv-strip-analyze-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.csv-strip-analyze-btn .btn-arrow {
+    transition: transform 0.3s;
+}
+
+.csv-strip-analyze-btn:hover .btn-arrow {
+    transform: translateX(3px);
+}
+
+.csv-file-input {
+    display: none;
+}
+
+/* ── CSV Results ── */
+.csv-results-section {
+    display: none;
+    margin-top: 24px;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.csv-results-section.active {
+    display: block;
+}
+
+.csv-results-wrap {
+    padding: 28px;
+}
+
+.csv-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.csv-results-header h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.csv-results-close {
+    background: none;
+    border: 1px solid var(--border-card);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.csv-results-close:hover {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.csv-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.csv-summary-card {
+    padding: 18px;
+    text-align: center;
+    border-radius: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    backdrop-filter: blur(16px);
+}
+
+.csv-summary-card .csv-stat-value {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    display: block;
+}
+
+.csv-summary-card .csv-stat-value.anomaly-color { color: #ef4444; }
+.csv-summary-card .csv-stat-value.normal-color { color: #10b981; }
+.csv-summary-card .csv-stat-value.temp-color { color: #f59e0b; }
+.csv-summary-card .csv-stat-value.rain-color { color: #06b6d4; }
+
+.csv-summary-card .csv-stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+    display: block;
+}
+
+.csv-anomaly-table-wrap {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1px solid var(--border-card);
+}
+
+.csv-anomaly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.csv-anomaly-table th {
+    background: rgba(14, 165, 233, 0.08);
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-card);
+}
+
+.csv-anomaly-table td {
+    padding: 10px 14px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-card);
+}
+
+.csv-anomaly-table tr:last-child td { border-bottom: none; }
+.csv-anomaly-table tr:hover td { background: rgba(14, 165, 233, 0.04); }
+.csv-anomaly-table .anomaly-row { background: rgba(239, 68, 68, 0.03); }
+.csv-anomaly-table .anomaly-row td { color: var(--text-primary); }
+
+.csv-table-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.csv-table-badge.anomaly {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.csv-table-badge.normal {
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+}
+
+.csv-charts-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.csv-chart-card {
+    padding: 22px;
+}
+
+.csv-chart-wrapper {
+    position: relative;
+    height: 240px;
+    margin-top: 10px;
+}
+
+.csv-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — COMPREHENSIVE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
-    /* Hide the hamburger menu button by default */
+    /* ── Hamburger Menu ── */
     .mobile-menu-btn {
         display: none;
     }
-    
-    /* Only show it when a city has been searched */
     body.analysis-active .mobile-menu-btn {
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    /* Hide sidebar by default & set it up for slide-in */
+    /* ── Sidebar Slide-in ── */
     .sidebar-panel {
         position: fixed;
         top: 0;
         left: 0;
         height: 100vh;
-        width: 80%; /* 80% width as requested */
+        width: 80%;
         max-width: 320px;
-        z-index: 9000; /* above overlay */
+        z-index: 9000;
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
         border-right: 1px solid var(--border-card);
-        background: var(--bg-card); /* Should already have backdrop-filter: blur() */
+        background: var(--bg-card);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3);
     }
-    
-    /* Stronger backdrop for mobile sidebar to ensure legibility */
     body.dark-mode .sidebar-panel {
         background: rgba(15, 23, 42, 0.95);
         backdrop-filter: blur(20px);
@@ -1642,25 +2072,433 @@ body.light-mode #view-system-info {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
     }
-
-    /* Slide in active class */
     .sidebar-panel.active {
         transform: translateX(0);
     }
 
-    /* Adjust main content to fill width since sidebar is hidden */
-    .main-content {
-        padding: 80px 20px 32px 20px; /* Add top padding to avoid hamburger button */
-        width: 100%;
-        margin-left: 0;
-    }
-    
-    /* Disable body scroll when sidebar is open */
     body.sidebar-open {
         overflow: hidden;
     }
-    
+
+    /* ── Main Content — FULL WIDTH ── */
+    .main-content {
+        padding: 20px 12px 32px 12px !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        max-width: 100vw;
+    }
+
+    body.analysis-active .main-content {
+        padding-top: 60px !important;
+    }
+
+    .app-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    /* ── Search Section — FULL WIDTH & USABLE ── */
     .search-container {
-        margin-top: 10px;
+        margin-top: 8px;
+        margin-bottom: 24px;
+        max-width: 100%;
+    }
+
+    .search-pill {
+        flex-direction: column;
+        padding: 14px !important;
+        gap: 10px;
+        border-radius: 20px !important;
+    }
+
+    .search-pill .search-icon {
+        display: none;
+    }
+
+    .search-pill input {
+        width: 100%;
+        padding: 12px 14px !important;
+        font-size: 1rem;
+        border: 1px solid var(--border-card);
+        border-radius: 14px;
+        background: var(--bg-input);
+    }
+
+    .search-pill .analyze-btn,
+    .search-pill #check-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px !important;
+        border-radius: 14px !important;
+        font-size: 1rem;
+    }
+
+    /* Suggestions dropdown on mobile */
+    .suggestions-dropdown {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        max-height: 200px;
+        border-radius: 14px;
+        z-index: 99999;
+    }
+
+    .suggestion-item {
+        padding: 12px 16px;
+    }
+
+    /* ── Search Card — less padding ── */
+    .search-card {
+        padding: 16px !important;
+        max-width: 100%;
+    }
+
+    .search-inner {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #check-btn {
+        width: 100%;
+        justify-content: center;
+        border-radius: var(--radius-full);
+    }
+
+    /* ── Header bar on mobile ── */
+    .top-header {
+        flex-direction: column;
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .header-search {
+        width: 100%;
+        order: 1;
+    }
+
+    .top-nav-search {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+        order: 0;
+    }
+
+    /* ── Page Title ── */
+    .page-title {
+        font-size: clamp(1.3rem, 6vw, 1.8rem) !important;
+    }
+
+    .page-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .search-header {
+        margin-bottom: 16px;
+    }
+
+    /* ── Quick Cities ── */
+    .quick-cities {
+        gap: 8px;
+        padding: 0 4px;
+    }
+
+    .city-chip {
+        padding: 7px 14px;
+        font-size: 0.85rem;
+    }
+
+    /* ── How It Works ── */
+    .how-it-works {
+        margin-top: 28px;
+        padding: 0 4px;
+    }
+
+    .hiw-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .hiw-step {
+        padding: 16px 12px;
+    }
+
+    .hiw-icon {
+        font-size: 1.6rem;
+    }
+
+    .hiw-step h4 {
+        font-size: 0.9rem;
+    }
+
+    .hiw-step p {
+        font-size: 0.78rem;
+    }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-value {
+        font-size: 1.6rem;
+    }
+
+    /* ── City Header ── */
+    .city-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 18px;
+        gap: 12px;
+    }
+
+    .city-header-right {
+        flex-direction: row-reverse;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .city-name {
+        font-size: 1.3rem;
+    }
+
+    .weather-icon-lg {
+        width: 52px;
+        height: 52px;
+    }
+
+    .temp-hero-val {
+        font-size: 2rem;
+    }
+
+    /* ── Charts ── */
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card {
+        padding: 16px;
+    }
+
+    .chart-wrapper {
+        height: 220px;
+    }
+
+    /* ── Map ── */
+    #weather-map {
+        height: 300px !important;
+    }
+
+    /* ── Anomaly Grid ── */
+    .anomaly-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .anomaly-details-card {
+        padding: 18px;
+    }
+
+    /* ── Summary Stats ── */
+    .summary-stats {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* ── Alert Banner ── */
+    .alert-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .alert-meta {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* ── Premium CTA ── */
+    .premium-cta-area {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+        padding: 24px 18px;
+    }
+
+    /* ── Quick Insights ── */
+    .quick-insights {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* ── Footer ── */
+    .footer-content {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .app-footer {
+        padding: 24px 16px;
+    }
+
+    /* ── Dataset Summary ── */
+    .dataset-summary {
+        padding: 18px;
+    }
+
+    /* ── System Separator ── */
+    .system-separator {
+        margin: 40px 0 24px;
+        padding: 0 5%;
+    }
+
+    /* ── CSV Strip Mobile ── */
+    .csv-strip-card {
+        padding: 14px 16px;
+    }
+
+    .csv-strip-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .csv-strip-left {
+        gap: 10px;
+    }
+
+    .csv-strip-icon-wrap {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    .csv-strip-title {
+        font-size: 0.82rem;
+    }
+
+    .csv-strip-sub {
+        font-size: 0.68rem;
+    }
+
+    .csv-strip-browse-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 20px;
+    }
+
+    .csv-strip-selected {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .csv-strip-analyze-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .csv-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .csv-charts-section {
+        grid-template-columns: 1fr;
+    }
+
+    .csv-chart-wrapper {
+        height: 220px;
+    }
+
+    .csv-results-wrap {
+        padding: 18px;
+    }
+
+    /* ── Live Data Line ── */
+    .live-data-line {
+        display: none;
+    }
+
+    /* ── Misc Toggle ── */
+    .live-indicator .live-text {
+        display: none;
+    }
+
+    .theme-toggle {
+        width: 46px;
+        height: 24px;
+    }
+
+    .toggle-thumb {
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+    }
+
+    body.light-mode .toggle-thumb {
+        transform: translateX(22px);
+    }
+
+    /* ── Section Divider ── */
+    .section-divider {
+        margin: 24px auto;
+        padding: 0 12px;
+    }
+}
+
+/* ── Extra small phones (≤480px) ── */
+@media (max-width: 480px) {
+    .main-content {
+        padding: 16px 8px 24px 8px !important;
+    }
+
+    body.analysis-active .main-content {
+        padding-top: 56px !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .city-name {
+        font-size: 1.15rem;
+    }
+
+    .hiw-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .csv-summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-cities {
+        gap: 6px;
+    }
+
+    .city-chip {
+        padding: 6px 12px;
+        font-size: 0.8rem;
     }
 }
